@@ -293,3 +293,4 @@ void test_hight() {
     }
     printf("Cycle AVX-512 HIGHT cpb= %lf\n", (float)cycle1 / (1000000 * 64));
 }
+ 
