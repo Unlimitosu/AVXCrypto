@@ -26,13 +26,14 @@ static inline uint32_t rol32(uint32_t value, size_t rot) {
     return (value << rot) | (value >> (32 - rot));
 }
 
+
 /*
-    @details    key generation function of CHAM-64, CHAM-128 and CHAM-256
+    @details    key generation function of CHAM-64/128, CHAM-128/256
     @param rks  round key
     @param mk   master key
     @return     None
 */
-void cham64_keygen(uint8_t* rks, const uint8_t* mk) {
+void cham_64_128_keygen(uint8_t* rks, const uint8_t* mk) {
     const uint16_t* key = (uint16_t*)mk;
     uint16_t* rk = (uint16_t*)rks;
     for (size_t i = 0; i < 8; ++i) {
@@ -43,26 +44,13 @@ void cham64_keygen(uint8_t* rks, const uint8_t* mk) {
 }
 
 
-void cham256_keygen(uint8_t* rks, const uint8_t* mk) {
+void cham_128_256_keygen(uint8_t* rks, const uint8_t* mk) {
     const uint32_t* key = (uint32_t*)mk;
     uint32_t* rk = (uint32_t*)rks;
 
     for (size_t i = 0; i < 8; ++i) {
         rk[i] = key[i] ^ rol32(key[i], 1);
         rk[(i + 8) ^ (0x1)] = rk[i] ^ rol32(key[i], 11);
-        rk[i] ^= rol32(key[i], 8);
-    }
-}
-
-
-void cham128_keygen(uint8_t* rks, const uint8_t* mk)
-{
-    const uint32_t* key = (uint32_t*)mk;
-    uint32_t* rk = (uint32_t*)rks;
-
-    for (size_t i = 0; i < 4; ++i) {
-        rk[i] = key[i] ^ rol32(key[i], 1);
-        rk[(i + 4) ^ (0x1)] = rk[i] ^ rol32(key[i], 11);
         rk[i] ^= rol32(key[i], 8);
     }
 }
@@ -75,7 +63,7 @@ void cham128_keygen(uint8_t* rks, const uint8_t* mk)
     @param RK   Round Key
     @return     None
 */
-void cham128_avx512(uint8_t* out, uint8_t* in, const uint8_t* RK) {
+void cham_64_128_avx512(uint8_t* out, uint8_t* in, const uint8_t* RK) {
 
     const uint16_t* rk = (uint16_t*)RK;
     __m512i pt[4];
@@ -156,7 +144,7 @@ void cham128_avx512(uint8_t* out, uint8_t* in, const uint8_t* RK) {
     @param RK   Round Key
     @return     None
 */
-void cham256_avx512(uint8_t* out, uint8_t* in, const uint8_t* RK) {
+void cham_128_256_avx512(uint8_t* out, uint8_t* in, const uint8_t* RK) {
     __m512i x0, x1, x2, x3, _rc, tmp;
     x0 = _mm512_setr_epi32(
         *((unsigned int*)in + 0x00), *((unsigned int*)in + 0x04), *((unsigned int*)in + 0x08), *((unsigned int*)in + 0x0c),
@@ -264,22 +252,22 @@ void test_cham() {
         pt16[16 * i + 15] = 0xff;
     }
 
-    cham64_keygen(rk, mk);
+    cham_64_128_keygen(rk, mk);
     printf("\n-------------------------\n");
     uint64_t cycle1 = 0;
     for (int i = 0; i < 10000; i++) {
         start = cpucycles();
-        cham128_avx512(ct, pt, rk);
+        cham_64_128_avx512(ct, pt, rk);
         end = cpucycles();
         cycle1 += end - start;
     }
     printf("Cycle AVX-512 CHAM64/128 cpb= %lf\n", ((float)(cycle1) / (10000 * 32)));
 
-    cham256_keygen(rk, mk);
+    cham_128_256_keygen(rk, mk);
     cycle1 = 0;
     for (int i = 0; i < 10000; i++) {
         start = cpucycles();
-        cham256_avx512(ct16, pt16, rk);
+        cham_128_256_avx512(ct16, pt16, rk);
         end = cpucycles();
         cycle1 += end - start;
     }
